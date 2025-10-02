@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-02T09:11:45.707991",
+  "beam_length_m": 0.139,
+  "camera": {
+    "index": 0,
+    "frame_width": 640,
+    "frame_height": 480
+  },
+  "ball_detection": {
+    "lower_hsv": [
+      7.0,
+      53.75,
+      176.8
+    ],
+    "upper_hsv": [
+      33.0,
+      255.0,
+      255.0
+    ]
+  },
+  "calibration": {
+    "pixel_to_meter_ratio": 0.00039225491546696046,
+    "position_min_m": -0.04518213446056816,
+    "position_max_m": 0.06053654899670218
+  },
+  "servo": {
+    "port": "/dev/cu.usbmodem11401",
+    "neutral_angle": 140
+  }
+}
