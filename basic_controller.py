@@ -92,7 +92,7 @@ class BasicPIDController:
 
     def camera_thread(self):
         """Dedicated thread for video capture and ball detection."""
-        cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+        cap = cv2.VideoCapture(4, cv2.CAP_V4L2)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         while self.running:
             ret, frame = cap.read()
@@ -112,12 +112,12 @@ class BasicPIDController:
                 except Exception:
                     pass
             # Show processed video with overlays
-            # cv2.imshow("Ball Tracking", vis_frame) #uncomment later
-            # if cv2.waitKey(1) & 0xFF == 27:  # ESC exits #uncomment later
-            #     self.running = False #uncomment later
-            #     break #uncomment later
+            cv2.imshow("Ball Tracking", vis_frame) #uncomment later
+            if cv2.waitKey(1) & 0xFF == 27:  # ESC exits #uncomment later
+                self.running = False #uncomment later
+                break #uncomment later
         cap.release()
-        # cv2.destroyAllWindows() #uncomment later
+        cv2.destroyAllWindows() #uncomment later
 
     def control_thread(self):
         """Runs PID control loop in parallel with GUI and camera."""

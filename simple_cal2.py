@@ -19,7 +19,7 @@ class SimpleAutoCalibrator:
         self.BEAM_LENGTH_M = 0.139  # Known beam length in meters
         
         # Camera configuration
-        self.CAM_INDEX = 0  # Default camera index
+        self.CAM_INDEX = 4  # Default camera index
         self.FRAME_W, self.FRAME_H = 640, 480  # Frame dimensions
         
         # Calibration state tracking
@@ -37,7 +37,7 @@ class SimpleAutoCalibrator:
         
         # Servo hardware configuration
         self.servo = None  # Serial connection to servo
-        self.servo_port = "/dev/cu.usbmodem11401"  # Servo communication port
+        self.servo_port = "/dev/ttyACM0"  # Servo communication port
         self.neutral_angle = 140  # Servo neutral position angle
         
         # Position limit results
@@ -357,7 +357,7 @@ class SimpleAutoCalibrator:
     def run(self):
         """Main calibration loop with interactive GUI."""
         # Initialize camera capture
-        self.cap = cv2.VideoCapture(self.CAM_INDEX, cv2.CAP_AVFOUNDATION)
+        self.cap = cv2.VideoCapture(self.CAM_INDEX, cv2.CAP_V4L2)
         # self.cap = cv2.VideoCapture(self.CAM_INDEX, cv2.CAP_DSHOW)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.FRAME_W)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.FRAME_H)
