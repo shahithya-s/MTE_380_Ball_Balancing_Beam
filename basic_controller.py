@@ -23,7 +23,8 @@ class BasicPIDController:
         # Scale factor for converting from pixels to meters
         self.scale_factor = self.config['calibration']['pixel_to_meter_ratio'] * self.config['camera']['frame_width'] / 2
         # Servo port name and center angle
-        self.servo_port = self.config['servo']['port']
+        # self.servo_port = self.config['servo']['port']
+        self.servo_port = "/dev/ttyACM1"  # Servo communication port
         self.neutral_angle = self.config['servo']['neutral_angle']
         self.servo = None
         # Controller-internal state
@@ -51,6 +52,7 @@ class BasicPIDController:
             print(f"[SERVO] Failed: {e}")
             return False
 
+
     # def send_servo_angle(self, angle):
     #     """Send angle command to servo motor (clipped for safety)."""
     #     if self.servo:
@@ -65,7 +67,7 @@ class BasicPIDController:
         """Send angle command to servo motor (clipped for safety)."""
         if self.servo:
             servo_angle = self.neutral_angle + angle
-            servo_angle = int(np.clip(servo_angle, 0, 30))
+            servo_angle = int(np.clip(servo_angle, 125, 155))
             try:
                 self.servo.write(f"{servo_angle}\n".encode("utf-8"))
             except Exception:
@@ -129,7 +131,7 @@ class BasicPIDController:
                 # Wait for latest ball position from camera
                 position = self.position_queue.get(timeout=0.1)
                 # Compute control output using PID
-                control_output = self.update_pid(position)
+                control_output = self.update_pid(position) + 140
                 # Send control command to servo (real or simulated)
                 self.send_servo_angle(control_output)
                 # Log results for plotting

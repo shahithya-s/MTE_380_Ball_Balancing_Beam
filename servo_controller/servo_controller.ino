@@ -34,7 +34,6 @@ void loop() {
   // Read the incoming byte
   String input = Serial.readStringUntil('\n');  // read until newline
   int receivedAngle = input.toInt();            // convert string to integer
-  
   // Validate angle range
   if (receivedAngle >= MIN_ANGLE && receivedAngle <= MAX_ANGLE) {
     targetAngle = receivedAngle;

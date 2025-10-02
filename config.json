@@ -24,7 +24,7 @@
     "position_max_m": 0.053337467061853605
   },
   "servo": {
-    "port": "/dev/ttyACM0",
+    "port": "/dev/ttyACM1",
     "neutral_angle": 140
   }
 }

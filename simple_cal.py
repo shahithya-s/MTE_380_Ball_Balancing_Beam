@@ -37,7 +37,7 @@ class SimpleAutoCalibrator:
         
         # Servo hardware configuration
         self.servo = None  # Serial connection to servo
-        self.servo_port = "/dev/ttyACM0"  # Servo communication port
+        self.servo_port = "/dev/ttyACM1"  # Servo communication port
         self.neutral_angle = 15  # Servo neutral position angle
         
         # Position limit results
