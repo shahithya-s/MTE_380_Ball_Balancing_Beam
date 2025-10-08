@@ -11,6 +11,66 @@ import queue
 from PIL import Image, ImageTk
 from ball_detection import detect_ball_x
 
+import threading
+
+class ServoWriter(threading.Thread):
+    def __init__(self, port, baud=9600, neutral=140, min_abs=105, max_abs=175, rate_hz=20, eol="\n"):
+        super().__init__(daemon=True)
+        self.port = port
+        self.baud = baud
+        self.neutral = int(neutral)
+        self.min_abs = int(min_abs)
+        self.max_abs = int(max_abs)
+        self.period = 1.0/max(1.0, rate_hz)
+        self.eol = eol
+        self._ser = None
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._rel_deg = 0
+
+    def set_angle(self, rel_deg):
+        with self._lock:
+            self._rel_deg = float(rel_deg)
+
+    def run(self):
+        try:
+            self._ser = serial.Serial(self.port, self.baud, timeout=0.1, write_timeout=0.2)
+            time.sleep(2.0)
+        except Exception as e:
+            print(f"[SERVO] open failed: {e}")
+            return
+
+        last_sent = None
+        while not self._stop.is_set():
+            t0 = time.time()
+            with self._lock:
+                rel = int(round(self._rel_deg))
+            abs_deg = int(self.neutral + rel)
+            abs_deg = max(self.min_abs, min(self.max_abs, abs_deg))
+            if abs_deg != last_sent:
+                try:
+                    self._ser.write(f"{abs_deg}{self.eol}".encode("utf-8"))
+                    # print(f"[SERVO] abs={abs_deg} (rel={rel:+d})")
+                    last_sent = abs_deg
+                except Exception as e:
+                    print(f"[SERVO] write err: {e}")
+            dt = self.period - (time.time() - t0)
+            if dt > 0:
+                time.sleep(dt)
+
+        # send neutral once on exit
+        try:
+            self._ser.write(f"{self.neutral}{self.eol}".encode("utf-8"))
+        except Exception:
+            pass
+        try:
+            self._ser.close()
+        except Exception:
+            pass
+
+    def stop(self):
+        self._stop.set()
+
 class BasicPIDController:
     def __init__(self, config_file="config.json"):
         """Initialize controller, load config, set defaults and queues."""
@@ -18,9 +78,9 @@ class BasicPIDController:
         with open(config_file, 'r') as f:
             self.config = json.load(f)
         # PID gains (controlled by sliders in GUI)
-        self.Kp = 10.0
-        self.Ki = 0.0
-        self.Kd = 0.0
+        self.Kp = 3.8
+        self.Ki = 0.226
+        self.Kd = 1.92
         # Scale factor for converting from pixels to meters
         self.scale_factor = self.config['calibration']['pixel_to_meter_ratio'] * self.config['camera']['frame_width'] / 2
         # Servo port name and center angle
@@ -42,10 +102,12 @@ class BasicPIDController:
         self.running = False    # Main run flag for clean shutdown
         self.preview_queue = queue.Queue(maxsize=1)
         self._tk_img = None
+        self.writer = None
         self.control_period = 0.05     # 20 Hz
         self.min_angle_step = 1.0      # only send if >= 1 deg change
         self.last_send_time = 0.0
         self.last_sent_angle = None
+        self.servo_dir = -1      # +1 normal, -1 invert servo mapping
         self.output_alpha = 0.3        # low-pass smoothing 0..1 (higher=less smoothing)
         self._y_smooth = 0.0           # internal for smoothing
 
@@ -61,17 +123,10 @@ class BasicPIDController:
             print(f"[SERVO] Failed: {e}")
             return False
 
-    def send_servo_angle(self, angle):
-        """Send angle command to servo motor as string with newline."""
-        if self.servo:
-            angle += int(self.neutral_angle)  # use your config value, not hardcoded 145
-            angle = int(np.clip(angle, 130, 160))
-            cmd = f"{angle}\n" 
-            try:
-                self.servo.write(cmd.encode("utf-8"))
-                print(f"[SERVO] Sent angle {angle}")
-            except Exception as e:
-                print(f"[SERVO] Write error: {e}")
+    def send_servo_angle(self, angle_rel_deg):
+        """Non-blocking: hand the target to the servo writer thread."""
+        if self.writer:
+            self.writer.set_angle(angle_rel_deg)
 
     def test_servo(self):
         """Send a sweep of dummy angles to the servo to verify connection and movement."""
@@ -107,7 +162,7 @@ class BasicPIDController:
         self.prev_error = error
         # PID output (limit to safe beam range)
         output = P + I + D
-        output = np.clip(output, -15, 15)
+        output = np.clip(output, -25, 25)
         print(f"Error: {error}")
         return output
 
@@ -141,15 +196,11 @@ class BasicPIDController:
                 self.preview_queue.put_nowait(rgb)
             except Exception:
                 pass
-            time.sleep(1.0/30.0)
         cap.release()
         
 
     def control_thread(self):
         """Runs PID control loop in parallel with GUI and camera."""
-        if not self.connect_servo():
-            print("[ERROR] No servo - running in simulation mode")
-
         self.start_time = time.time()
         last_send_time = 0
 
@@ -159,6 +210,7 @@ class BasicPIDController:
                 position = self.position_queue.get(timeout=0.1)
                 # Compute control output using PID
                 control_output = self.update_pid(position)
+                control_output *= self.servo_dir
                 # Send control command to servo (real or simulated)
                 current_send_time = time.time()
                 if current_send_time - last_send_time > 0: # 0 placeholder for now, remove later
@@ -176,10 +228,6 @@ class BasicPIDController:
             except Exception as e:
                 print(f"[CONTROL] Error: {e}")
                 break
-        if self.servo:
-            # Return to neutral on exit
-            self.send_servo_angle(0)
-            self.servo.close()
 
     def create_gui(self):
         """Build Tkinter GUI with large sliders and labeled controls."""
@@ -202,19 +250,19 @@ class BasicPIDController:
         # Ki slider
         ttk.Label(self.root, text="Ki (Integral)", font=("Arial", 12)).pack()
         self.ki_var = tk.DoubleVar(value=self.Ki)
-        ki_slider = ttk.Scale(self.root, from_=0, to=10, variable=self.ki_var,
+        ki_slider = ttk.Scale(self.root, from_=0, to=1, variable=self.ki_var,
                               orient=tk.HORIZONTAL, length=500)
         ki_slider.pack(pady=5)
-        self.ki_label = ttk.Label(self.root, text=f"Ki: {self.Ki:.1f}", font=("Arial", 11))
+        self.ki_label = ttk.Label(self.root, text=f"Ki: {self.Ki:.3f}", font=("Arial", 11))
         self.ki_label.pack()
 
         # Kd slider
         ttk.Label(self.root, text="Kd (Derivative)", font=("Arial", 12)).pack()
         self.kd_var = tk.DoubleVar(value=self.Kd)
-        kd_slider = ttk.Scale(self.root, from_=0, to=20, variable=self.kd_var,
+        kd_slider = ttk.Scale(self.root, from_=0, to=10, variable=self.kd_var,
                               orient=tk.HORIZONTAL, length=500)
         kd_slider.pack(pady=5)
-        self.kd_label = ttk.Label(self.root, text=f"Kd: {self.Kd:.1f}", font=("Arial", 11))
+        self.kd_label = ttk.Label(self.root, text=f"Kd: {self.Kd:.3f}", font=("Arial", 11))
         self.kd_label.pack()
 
         # Setpoint slider
@@ -256,8 +304,8 @@ class BasicPIDController:
             self.setpoint = self.setpoint_var.get()
             # Update displayed values
             self.kp_label.config(text=f"Kp: {self.Kp:.1f}")
-            self.ki_label.config(text=f"Ki: {self.Ki:.1f}")
-            self.kd_label.config(text=f"Kd: {self.Kd:.1f}")
+            self.ki_label.config(text=f"Ki: {self.Ki:.3f}")
+            self.kd_label.config(text=f"Kd: {self.Kd:.3f}")
             self.setpoint_label.config(text=f"Setpoint: {self.setpoint:.3f}m")
             # Update video preview if a new frame is available
             try:
@@ -302,6 +350,13 @@ class BasicPIDController:
     def stop(self):
         """Stop everything and clean up threads and GUI."""
         self.running = False
+        # Stop writer
+        try:
+            if self.writer:
+                self.writer.stop()
+        except Exception:
+            pass
+
         # Try to safely close all windows/resources
         try:
             self.root.quit()
@@ -315,6 +370,19 @@ class BasicPIDController:
         print("Use sliders to tune PID gains in real-time")
         print("Close camera window or click Stop to exit")
         self.running = True
+
+        self.writer = ServoWriter(
+            port=self.servo_port,
+            baud=9600,
+            neutral=int(self.neutral_angle),
+            min_abs=115,
+            max_abs=165,
+            rate_hz=20,
+            eol="\n",
+        )
+        self.writer.start()
+        time.sleep(0.1)
+        self.writer.set_angle(0)
 
         # Start camera and control threads, mark as daemon for exit
         cam_thread = Thread(target=self.camera_thread, daemon=True)
