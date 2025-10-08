@@ -178,7 +178,7 @@ def main():
             break
         
         # Resize frame for consistent processing
-        frame = cv2.resize(frame, (640, 480))
+        frame = cv2.resize(frame, (640, 360))
         
         # Get detection results with overlay
         vis_frame, found, position_m = detector.draw_detection(frame)

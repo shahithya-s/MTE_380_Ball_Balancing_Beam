@@ -16,7 +16,7 @@ class SimpleAutoCalibrator:
     def __init__(self):
         """Initialize calibration parameters and default values."""
         # Physical system parameters
-        self.BEAM_LENGTH_M = 0.2  # Known beam length in meters
+        self.BEAM_LENGTH_M = 0.1398  # Known beam length in meters
         
         # Camera configuration
         self.CAM_INDEX = 0  # Default camera index
@@ -37,8 +37,8 @@ class SimpleAutoCalibrator:
         
         # Servo hardware configuration
         self.servo = None  # Serial connection to servo
-        self.servo_port = "COM3"  # Servo communication port
-        self.neutral_angle = 15  # Servo neutral position angle
+        self.servo_port = "/dev/cu.usbmodem31401"  # Servo communication port
+        self.neutral_angle = 140  # Servo neutral position angle
         
         # Position limit results
         self.position_min = None  # Minimum ball position in meters
@@ -59,16 +59,24 @@ class SimpleAutoCalibrator:
             print("[SERVO] Failed to connect - limits will be estimated")
             return False
 
-    def send_servo_angle(self, angle):
-        """Send angle command to servo motor with safety clipping.
+    # def send_servo_angle(self, angle):
+    #     """Send angle command to servo motor with safety clipping.
         
-        Args:
-            angle (float): Desired servo angle in degrees
-        """
+    #     Args:
+    #         angle (float): Desired servo angle in degrees
+    #     """
+    #     if self.servo:
+    #         # Clip angle to safe range and send as byte
+    #         angle = int(np.clip(angle, 0, 30))
+    #         self.servo.write(bytes([angle]))
+
+    def send_servo_angle(self, angle):
+        """Send angle command to servo motor as string with newline."""
         if self.servo:
-            # Clip angle to safe range and send as byte
-            angle = int(np.clip(angle, 0, 30))
-            self.servo.write(bytes([angle]))
+            angle = int(np.clip(angle, 105, 175))   # safety clip
+            cmd = f"{angle}\n"                   # e.g. "15\n"
+            self.servo.write(cmd.encode("utf-8"))
+            print(f"[SERVO] Sent angle {angle}")
 
     def mouse_callback(self, event, x, y, flags, param):
         """Handle mouse click events for interactive calibration.
@@ -204,7 +212,7 @@ class SimpleAutoCalibrator:
         positions = []
         
         # Test servo at different angles to find position range
-        test_angles = [self.neutral_angle - 15, self.neutral_angle, self.neutral_angle + 15]
+        test_angles = [self.neutral_angle - 35, self.neutral_angle, self.neutral_angle + 35]
         
         for angle in test_angles:
             # Move servo to test angle
@@ -349,7 +357,8 @@ class SimpleAutoCalibrator:
     def run(self):
         """Main calibration loop with interactive GUI."""
         # Initialize camera capture
-        self.cap = cv2.VideoCapture(self.CAM_INDEX, cv2.CAP_DSHOW)
+        self.cap = cv2.VideoCapture(self.CAM_INDEX, cv2.CAP_AVFOUNDATION)
+        # self.cap = cv2.VideoCapture(self.CAM_INDEX, cv2.CAP_DSHOW)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.FRAME_W)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.FRAME_H)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Minimize latency

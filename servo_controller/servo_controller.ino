@@ -3,8 +3,8 @@
 // Servo configuration
 Servo beamServo;
 const int servoPin = 9;
-const int MIN_ANGLE = 125;
-const int MAX_ANGLE = 155;
+const int MIN_ANGLE = 105;
+const int MAX_ANGLE = 175;
 const int NEUTRAL_ANGLE = 140;
 
 // Communication variables
