@@ -16,7 +16,7 @@ class SimpleAutoCalibrator:
     def __init__(self):
         """Initialize calibration parameters and default values."""
         # Physical system parameters
-        self.BEAM_LENGTH_M = 0.1398  # Known beam length in meters
+        self.BEAM_LENGTH_M = 0.30  # Known beam length in meters
         
         # Camera configuration
         self.CAM_INDEX = 0  # Default camera index
@@ -37,8 +37,8 @@ class SimpleAutoCalibrator:
         
         # Servo hardware configuration
         self.servo = None  # Serial connection to servo
-        self.servo_port = "/dev/cu.usbmodem31401"  # Servo communication port
-        self.neutral_angle = 140  # Servo neutral position angle
+        self.servo_port = "/dev/cu.usbmodem11301"  # Servo communication port
+        self.neutral_angle = 90  # Servo neutral position angle
         
         # Position limit results
         self.position_min = None  # Minimum ball position in meters
@@ -51,7 +51,7 @@ class SimpleAutoCalibrator:
             bool: True if connection successful, False otherwise
         """
         try:
-            self.servo = serial.Serial(self.servo_port, 9600)
+            self.servo = serial.Serial(self.servo_port, 115200)
             time.sleep(2)  # Allow time for connection to stabilize
             print("[SERVO] Connected")
             return True
@@ -73,7 +73,8 @@ class SimpleAutoCalibrator:
     def send_servo_angle(self, angle):
         """Send angle command to servo motor as string with newline."""
         if self.servo:
-            angle = int(np.clip(angle, 105, 175))   # safety clip
+            # angle = int(np.clip(angle, 105, 175))   # safety clip
+            angle = int(np.clip(angle, 40, 112))   # safety clip
             cmd = f"{angle}\n"                   # e.g. "15\n"
             self.servo.write(cmd.encode("utf-8"))
             print(f"[SERVO] Sent angle {angle}")
@@ -212,7 +213,7 @@ class SimpleAutoCalibrator:
         positions = []
         
         # Test servo at different angles to find position range
-        test_angles = [self.neutral_angle - 35, self.neutral_angle, self.neutral_angle + 35]
+        test_angles = [40, self.neutral_angle, 112]
         
         for angle in test_angles:
             # Move servo to test angle
@@ -362,6 +363,14 @@ class SimpleAutoCalibrator:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.FRAME_W)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.FRAME_H)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Minimize latency
+
+        # --- ADJUST EXPOSURE AND BRIGHTNESS ---
+        # These values depend on your camera model; experiment with them
+        # self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)   # Turn off auto exposure
+        # self.cap.set(cv2.CAP_PROP_EXPOSURE, -10)          # Lower exposure (try values -4 to -8)
+        # self.cap.set(cv2.CAP_PROP_BRIGHTNESS, 50)        # Adjust brightness if needed
+        # self.cap.set(cv2.CAP_PROP_CONTRAST, 30)
+        # self.cap.set(cv2.CAP_PROP_SATURATION, 70)
         
         # Setup OpenCV window and mouse callback
         cv2.namedWindow("Auto Calibration")

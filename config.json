@@ -1,6 +1,6 @@
 {
-  "timestamp": "2025-10-08T09:27:42.236740",
-  "beam_length_m": 0.1398,
+  "timestamp": "2025-11-11T10:57:18.406124",
+  "beam_length_m": 0.3,
   "camera": {
     "index": 0,
     "frame_width": 640,
@@ -9,22 +9,22 @@
   "ball_detection": {
     "lower_hsv": [
       12.0,
-      158.4,
-      153.45
+      65.7,
+      138.0
     ],
     "upper_hsv": [
       26.0,
       255.0,
-      253.55
+      207.0
     ]
   },
   "calibration": {
-    "pixel_to_meter_ratio": 0.0005727776733398511,
-    "position_min_m": -0.04753270447134447,
-    "position_max_m": 0.061557387963885275
+    "pixel_to_meter_ratio": 0.0006696411889141352,
+    "position_min_m": -0.13228448235467694,
+    "position_max_m": 0.12123546753619613
   },
   "servo": {
-    "port": "/dev/cu.usbmodem31401",
-    "neutral_angle": 140
+    "port": "/dev/cu.usbmodem11301",
+    "neutral_angle": 90
   }
 }

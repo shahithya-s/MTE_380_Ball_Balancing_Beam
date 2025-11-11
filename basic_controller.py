@@ -14,7 +14,7 @@ from ball_detection import detect_ball_x
 import threading
 
 class ServoWriter(threading.Thread):
-    def __init__(self, port, baud=9600, neutral=140, min_abs=105, max_abs=175, rate_hz=20, eol="\n"):
+    def __init__(self, port, baud=115200, neutral=90, min_abs=40, max_abs=112, rate_hz=20, eol="\n"):
         super().__init__(daemon=True)
         self.port = port
         self.baud = baud
@@ -79,8 +79,8 @@ class BasicPIDController:
             self.config = json.load(f)
         # PID gains (controlled by sliders in GUI)
         self.Kp = 3.8
-        self.Ki = 0.226
-        self.Kd = 1.92
+        self.Ki = 0.325
+        self.Kd = 1.962
         # Scale factor for converting from pixels to meters
         self.scale_factor = self.config['calibration']['pixel_to_meter_ratio'] * self.config['camera']['frame_width'] / 2
         # Servo port name and center angle
@@ -115,7 +115,7 @@ class BasicPIDController:
     def connect_servo(self):
         """Try to open serial connection to servo, return True if success."""
         try:
-            self.servo = serial.Serial(self.servo_port, 9600)
+            self.servo = serial.Serial(self.servo_port, 115200)
             time.sleep(2)
             print("[SERVO] Connected")
             return True
@@ -162,7 +162,7 @@ class BasicPIDController:
         self.prev_error = error
         # PID output (limit to safe beam range)
         output = P + I + D
-        output = np.clip(output, -25, 25)
+        output = np.clip(output, -22, 22)
         print(f"Error: {error}")
         return output
 
@@ -373,15 +373,15 @@ class BasicPIDController:
 
         self.writer = ServoWriter(
             port=self.servo_port,
-            baud=9600,
+            baud=115200,
             neutral=int(self.neutral_angle),
-            min_abs=115,
-            max_abs=165,
+            min_abs=40,
+            max_abs=112,
             rate_hz=20,
             eol="\n",
         )
         self.writer.start()
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.writer.set_angle(0)
 
         # Start camera and control threads, mark as daemon for exit

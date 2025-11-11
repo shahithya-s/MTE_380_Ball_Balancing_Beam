@@ -31,7 +31,7 @@ class ServoWriter(threading.Thread):
     def __init__(
         self,
         port: str,
-        baud: int = 9600,
+        baud: int = 115200,
         neutral_deg: int = 145,     # center value your Arduino expects
         min_abs_deg: int = 130,     # absolute clamp lower bound
         max_abs_deg: int = 160,     # absolute clamp upper bound
@@ -163,7 +163,7 @@ def pattern_dither(writer: ServoWriter, amp=3.0, freq=0.5):
 def main():
     ap = argparse.ArgumentParser(description="Threaded servo sanity test (no camera/PID).")
     ap.add_argument("--port", required=True, help="Serial port (e.g., /dev/tty.usbmodem1101 or COM3)")
-    ap.add_argument("--baud", type=int, default=9600)
+    ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--neutral", type=int, default=145, help="Neutral absolute angle your Arduino expects")
     ap.add_argument("--min", dest="min_abs", type=int, default=130)
     ap.add_argument("--max", dest="max_abs", type=int, default=160)
