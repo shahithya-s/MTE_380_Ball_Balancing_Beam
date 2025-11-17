@@ -8,7 +8,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 const int MIN_ANGLE = 40;
 const int MAX_ANGLE = 112;
-const int NEUTRAL_ANGLE = 90;
+const int NEUTRAL_ANGLE = 76;
 
 // Communication variables
 int targetAngles[3] = {NEUTRAL_ANGLE, NEUTRAL_ANGLE, NEUTRAL_ANGLE};
@@ -26,7 +26,6 @@ void setup() {
   for (int i = 0; i < 3; i++) {
     setServoAngle(i, targetAngles[i]);
   }
-
   delay(10);
 }
 
@@ -45,9 +44,6 @@ void setup() {
 // 116 deg is max downwards
 
 void loop() {
-
-  setServoAngle(0, 90);
-  setServoAngle(1, 90);
 
   // Check for incoming serial data
   if (Serial.available() > 0) {
@@ -85,4 +81,5 @@ void loop() {
 void setServoAngle(uint8_t channel_num, float angle){
   uint16_t off_to_write = map(angle, 0.0, 180.0, SERVOMIN, SERVOMAX);
   pwm.setPWM(channel_num, 0, off_to_write);
+  delay(10);
 }
