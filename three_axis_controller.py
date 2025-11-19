@@ -158,9 +158,9 @@ class StewartAxisPIDController:
         self.max_angles = (112, 112, 112)
 
         # ---------------- PID parameters (shared across axes) ----------------
-        self.Kp = 3.0
-        self.Ki = 0.0
-        self.Kd = 0.2
+        self.Kp = 1.18
+        self.Ki = 0.035
+        self.Kd = 0.592
 
         # Per-axis PID state
         self.integral = np.zeros(3, dtype=float)
@@ -178,7 +178,7 @@ class StewartAxisPIDController:
         # 80 tilts plate UP, 100 tilts plate DOWN for all three:
         #   positive rel_deg -> tilt DOWN (toward 100)
         # If you find an axis is inverted, change its sign to -1.0
-        self.servo_signs = np.array([1.0, -1.0, -1.0], dtype=float)
+        self.servo_signs = np.array([-1.0, -1.0, 1.0], dtype=float)
 
         # logging
         self.time_log = []
